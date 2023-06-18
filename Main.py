@@ -11,7 +11,7 @@ import argparse #用于解析命令行参数和选项
 #from torch.utils.data import DataLoader--ms加载数据集？？
 sys.path.append('%s/../pytorch_DGCNN' % os.path.dirname(os.path.realpath(__file__))) #添加自定义模块搜索目录,引用模块和执行脚本不在一个目录
 from main import *
-from utils_functions import *
+from util_functions import *
 
 parser = argparse.ArgumentParser(description='Link Prediction with SEAL')
 #general settings （带--为可选参数
@@ -35,9 +35,9 @@ parser.add_argument('--all-unknown-as-negative', action='store_true', default=Fa
 #model setting
 parser.add_argument('--hop', default=1, metavar='S',help='enclosing subgraph hop number, options:1,2,..,auto') #metavar 用于指定参数名称
 parser.add_argument('--max-nodes-per-hop', default=None, help='if>0, upper bound the number per hop by subsampling')
-parser.add_argument('--use-embedding', action='store_ture', default=False, help='whether to use node2vec node embeddings')
-parser.add_argument('--use-attibute', action='store_ture', default=False, help='whether to use node attributes')
-parser.add_argument('--save-model', action='store_ture', default=False, help='save final model')
+parser.add_argument('--use-embedding', action='store_true', default=False, help='whether to use node2vec node embeddings')
+parser.add_argument('--use-attribute', action='store_true', default=False, help='whether to use node attributes')
+parser.add_argument('--save-model', action='store_true', default=False, help='save final model')
 args = parser.parse_args() #将parser中设置的所有参数返回给args实例
 ms.set_seed(args.seed) #生成种子
 # if args.cuda:
@@ -46,8 +46,8 @@ print(args)
 
 #固定三方的随机数种子。（cmd_args哪来的？
 random.seed(cmd_args.seed) #python的
-np.ranom.seed(cmd_args.seed) #第三方库Numpy的
-ms.set_seed(cmd_arg.seed)
+np.random.seed(cmd_args.seed) #第三方库Numpy的
+ms.set_seed(cmd_args.seed)
 if args.hop != 'auto':
     args.hop = int(args.hop)
 if args.max_nodes_per_hop is not None:
@@ -59,7 +59,7 @@ args.file_dir = os.path.dirname(os.path.realpath('__file__'))
 
 #检查训练和测试连接是否准备好
 train_pos, test_pos = None, None
-if ars.train_name is not None:
+if args.train_name is not None:
     args.train_dir = os.path.join(args.file_dir, 'data/{}'.format(args.train_name))
     train_idx = np.loadtxt(args.train_dir, dtype=int)
     train_pos = (train_idx[:, 0], train_idx[:, 1])
@@ -103,7 +103,7 @@ else: #(无指定数据集?)从训练连接中建立网络
 if args.train_name is None and args.test_name is None:
     #从网络中同事采样正向和负向的训练/测试连接
     train_pos, train_neg, test_pos, test_neg = sample_neg(
-        net, args.test_ration, max_train_num=args.max_train_num
+        net, args.test_ratio, max_train_num=args.max_train_num
     )
 else:
     #使用已有的训练/测试正向链接，从网络中采样负连接
@@ -119,7 +119,7 @@ else:
 A = net.copy()
 A[test_pos[0], test_pos[1]] = 0 #mask test links
 A[test_pos[1], test_pos[0]] = 0 #mask test links
-A.eliminate_zero() #使用scipy-1.3.x中的稀疏矩阵时，需要连接是遮蔽？的
+A.eliminate_zeros() #使用scipy-1.3.x中的稀疏矩阵时，需要连接是遮蔽？的
 
 node_information = None
 if args.use_embedding:
@@ -144,7 +144,7 @@ if args.only_predict: #无需使用负连接
     )
     print('# test: %d' % (len(test_graphs)))
 else:
-    train_graphs, test_graphs, max_n_label = links2graph(
+    train_graphs, test_graphs, max_n_label = links2subgraphs(
         A,
         train_pos,
         train_neg,

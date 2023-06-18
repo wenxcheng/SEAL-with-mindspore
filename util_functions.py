@@ -67,7 +67,7 @@ def sample_neg(net, test_ratio=0.1, train_pos=None, test_pos=None, max_train_num
     return train_pos, train_neg, test_pos, test_neg
 
 
-def links2subgraph(A, train_pos, train_neg, test_pos, test_neg, h=1,
+def links2subgraphs(A, train_pos, train_neg, test_pos, test_neg, h=1,
                    max_nodes_per_hop=None, node_information=None, no_parallel=False):
     #从{1,2}中自动选择h
     if h == 'auto':
@@ -97,12 +97,12 @@ def links2subgraph(A, train_pos, train_neg, test_pos, test_neg, h=1,
                 parallel_worker,
                 [((i, j), A, h, max_nodes_per_hop, node_information) for i,j in zip(links[0], links[1])]
             )
-            remaining = results.number_left
+            remaining = results._number_left
             pbar = tqdm(total=remaining)
             while True:
-                pbar.update(remaining - results.number_left)
+                pbar.update(remaining - results._number_left)
                 if results.ready(): break
-                remaining = results.number_left
+                remaining = results._number_left
                 time.sleep(1)
             results = results.get()
             pool.close()
